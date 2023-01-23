@@ -52,10 +52,14 @@ func NewManager(provideName, cookieName string, maxlifetime int64) (*Manager, er
 	if !ok {
 		return nil, fmt.Errorf("session: unknown provide %q (forgotten import?)", provideName)
 	}
-	return &Manager{provider: provider, cookieName: cookieName, maxlifetime: maxlifetime}, nil
+	return &Manager{
+		provider:    provider,
+		cookieName:  cookieName,
+		maxlifetime: maxlifetime,
+	}, nil
 }
 
-//get Session
+// get Session
 func (manager *Manager) SessionStart(w http.ResponseWriter, r *http.Request) (session Session) {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
@@ -72,7 +76,7 @@ func (manager *Manager) SessionStart(w http.ResponseWriter, r *http.Request) (se
 	return
 }
 
-//Destroy sessionid
+// Destroy sessionid
 func (manager *Manager) SessionDestroy(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(manager.cookieName)
 	if err != nil || cookie.Value == "" {
@@ -80,7 +84,9 @@ func (manager *Manager) SessionDestroy(w http.ResponseWriter, r *http.Request) {
 	} else {
 		manager.lock.Lock()
 		defer manager.lock.Unlock()
-		manager.provider.SessionDestroy(cookie.Value)
+		if err := manager.provider.SessionDestroy(cookie.Value); err != nil {
+			return
+		}
 		expiration := time.Now()
 		cookie := http.Cookie{Name: manager.cookieName, Path: "/", HttpOnly: true, Expires: expiration, MaxAge: -1}
 		http.SetCookie(w, &cookie)

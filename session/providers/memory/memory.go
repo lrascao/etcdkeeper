@@ -2,27 +2,33 @@ package memory
 
 import (
 	"container/list"
-	"etcdkeeper/session"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/lrascao/etcdkeeper/session"
 )
 
 var pder = &Provider{list: list.New()}
 
 type SessionStore struct {
-	sid          string                      //session id唯一标示	  	
-	timeAccessed time.Time                   //最后访问时间	  	
+	sid          string                      //session id唯一标示
+	timeAccessed time.Time                   //最后访问时间
 	value        map[interface{}]interface{} //session里面存储的值
 }
 
 func (st *SessionStore) Set(key, value interface{}) error {
 	st.value[key] = value
-	pder.SessionUpdate(st.sid)
+	if err := pder.SessionUpdate(st.sid); err != nil {
+		return fmt.Errorf("session updated failed due to %w", err)
+	}
 	return nil
 }
 
 func (st *SessionStore) Get(key interface{}) interface{} {
-	pder.SessionUpdate(st.sid)
+	if err := pder.SessionUpdate(st.sid); err != nil {
+		return fmt.Errorf("session updated failed due to %w", err)
+	}
 	if v, ok := st.value[key]; ok {
 		return v
 	} else {
@@ -32,7 +38,9 @@ func (st *SessionStore) Get(key interface{}) interface{} {
 
 func (st *SessionStore) Delete(key interface{}) error {
 	delete(st.value, key)
-	pder.SessionUpdate(st.sid)
+	if err := pder.SessionUpdate(st.sid); err != nil {
+		return fmt.Errorf("session updated failed due to %w", err)
+	}
 	return nil
 }
 
